@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diagnostic-service
+  namespace: it-diagnostics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diagnostic-service
+  template:
+    metadata:
+      labels:
+        app: diagnostic-service
+    spec:
+      containers:
+      - name: diagnostic-service
+        image: maxmedov/it-diagnostics-management-platform:diagnostic_service
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5002
+        env:
+        - name: DATABASE_URI
+          value: "postgresql://postgres:yourpassword@postgres:5432/itdiagnostics"
+        - name: SECRET_KEY
+          value: "your_secret_key"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: diagnostic-service
+  namespace: it-diagnostics
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5002
+    targetPort: 5002
+  selector:
+    app: diagnostic-service
+

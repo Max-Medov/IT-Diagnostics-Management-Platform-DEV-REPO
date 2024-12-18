@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: it-diagnostics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: maxmedov/it-diagnostics-management-platform:auth_service
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DATABASE_URI
+          value: "postgresql://postgres:yourpassword@postgres:5432/itdiagnostics"
+        - name: SECRET_KEY
+          value: "your_secret_key"
+        command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--debug"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: it-diagnostics
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: auth-service
+
