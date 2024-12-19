@@ -31,15 +31,18 @@ pipeline {
             }
         }
 
+        // Pre-Push Sanity Tests
+        // If you have no /health endpoint, use another endpoint that returns 200
+        // If you really have no such endpoint, consider skipping this step.
         stage('Pre-Push Sanity Tests') {
             steps {
                 script {
-                    // Test auth_service image
+                    // Test auth_service image using `/` endpoint or any other that returns 200 OK
                     sh """
                     docker run -d --name test_auth -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
                     for i in {1..3}; do
                       sleep 10
-                      if curl -f http://localhost:9000/health; then
+                      if curl -f http://localhost:9000/; then
                         echo "Auth service sanity test passed"
                         break
                       else
@@ -59,7 +62,7 @@ pipeline {
                     docker run -d --name test_case -p 9001:5001 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service
                     for i in {1..3}; do
                       sleep 10
-                      if curl -f http://localhost:9001/health; then
+                      if curl -f http://localhost:9001/; then
                         echo "Case service sanity test passed"
                         break
                       else
@@ -79,7 +82,7 @@ pipeline {
                     docker run -d --name test_diag -p 9002:5002 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service
                     for i in {1..3}; do
                       sleep 10
-                      if curl -f http://localhost:9002/health; then
+                      if curl -f http://localhost:9002/; then
                         echo "Diagnostic service sanity test passed"
                         break
                       else
@@ -99,7 +102,7 @@ pipeline {
                     docker run -d --name test_frontend -p 9003:3000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend
                     for i in {1..3}; do
                       sleep 10
-                      if curl -f http://localhost:9003/health; then
+                      if curl -f http://localhost:9003/; then
                         echo "Frontend sanity test passed"
                         break
                       else
@@ -190,7 +193,7 @@ pipeline {
                         http://case.local/cases || (echo "Case creation failed" && exit 1)
                     """
 
-                    // Verify the case exists
+                    // Verify case exists
                     sh """
                     CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
                     echo "Received cases: \$CASES"
