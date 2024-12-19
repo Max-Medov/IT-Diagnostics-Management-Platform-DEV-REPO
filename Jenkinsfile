@@ -23,35 +23,37 @@ pipeline {
                    #!/bin/sh
                    set -e  # Exit immediately if a command exits with a non-zero status
 
-                   # Create a Python virtual environment
+                   echo "Creating a Python virtual environment..."
                    python3 -m venv venv
 
-                   # Activate the virtual environment
+                   echo "Activating the virtual environment..."
                    . venv/bin/activate
 
-                   # Upgrade pip
+                   echo "Python path inside virtualenv: \$(which python)"
+                   echo "Pip path inside virtualenv: \$(which pip)"
+
+                   echo "Upgrading pip..."
                    pip install --upgrade pip
 
-                   # Auth Service Tests
                    echo "Running Auth Service Tests..."
                    cd backend/auth_service
                    pip install -r requirements.txt
                    python -m pytest tests/ --maxfail=1 --disable-warnings -v
 
-                   # Case Service Tests
                    echo "Running Case Service Tests..."
                    cd ../case_service
                    pip install -r requirements.txt
                    python -m pytest tests/ --maxfail=1 --disable-warnings -v
 
-                   # Diagnostic Service Tests
                    echo "Running Diagnostic Service Tests..."
                    cd ../diagnostic_service
                    pip install -r requirements.txt
                    python -m pytest tests/ --maxfail=1 --disable-warnings -v
 
-                   # Deactivate the virtual environment
+                   echo "Deactivating the virtual environment..."
                    deactivate
+
+                   echo "Backend installation and testing completed successfully."
                 """
             }
         }
@@ -68,6 +70,8 @@ pipeline {
 
                    echo "Running frontend tests..."
                    npm run test -- --watchAll=false
+
+                   echo "Frontend installation and testing completed successfully."
                 """
             }
         }
@@ -76,10 +80,12 @@ pipeline {
             steps {
                 script {
                     sh """
+                       echo "Building Docker images..."
                        docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service -f backend/auth_service/Dockerfile backend/auth_service
                        docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service -f backend/case_service/Dockerfile backend/case_service
                        docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service -f backend/diagnostic_service/Dockerfile backend/diagnostic_service
                        docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend -f frontend/Dockerfile frontend
+                       echo "Docker images built successfully."
                     """
                 }
             }
@@ -95,11 +101,12 @@ pipeline {
                        echo "Logging into Docker Hub..."
                        echo ${DOCKER_PASS} | docker login ${REGISTRY} -u ${DOCKER_USER} --password-stdin
 
-                       echo "Pushing Docker images..."
+                       echo "Pushing Docker images to Docker Hub..."
                        docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
                        docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service
                        docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service
                        docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend
+                       echo "Docker images pushed successfully."
                     """
                 }
             }
@@ -121,6 +128,7 @@ pipeline {
                        kubectl apply -f kubernetes/diagnostic-service.yaml
                        kubectl apply -f kubernetes/frontend.yaml
                        kubectl apply -f kubernetes/ingress.yaml
+                       echo "Deployment to Kubernetes completed successfully."
                     """
                 }
             }
@@ -141,6 +149,7 @@ pipeline {
 
                     echo "Checking frontend availability..."
                     curl -f http://frontend.local || (echo "Frontend not responding" && exit 1)
+                    echo "All pods are ready and frontend is available."
                     """
                 }
             }
@@ -175,6 +184,8 @@ pipeline {
                         curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \\
                             -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \\
                             http://case.local/cases || (echo "Case creation failed" && exit 1)
+
+                        echo "Integration tests completed successfully."
                         """
                     }
                 }
