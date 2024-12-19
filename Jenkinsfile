@@ -10,12 +10,15 @@ pipeline {
         KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id"
         TEST_USER = "testuser"
         TEST_PASS = "testpass"
+        
+        # Set a dummy DB connection if needed, or ensure auth_service can run without DB
+        # Adjust these ENV vars to what auth_service needs to run locally.
+        AUTH_DB_URI = "postgresql://postgres:yourpassword@db:5432/itdiagnostics"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Clones the APP repository
                 git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform.git'
             }
         }
@@ -34,85 +37,44 @@ pipeline {
         stage('Pre-Push Sanity Tests') {
             steps {
                 script {
-                    // Test auth_service
+                    // If auth_service needs a DB, run a DB container first. Adjust if your DB is different.
+                    // If not needed, remove these lines.
                     sh """
-                    docker run -d --name test_auth -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
-                    for i in \$(seq 1 3); do
-                      sleep 10
-                      if curl -f http://localhost:9000/; then
-                        echo "Auth service sanity test passed"
-                        break
-                      else
-                        echo "Auth service not ready yet, retrying..."
-                      fi
-                      if [ \$i -eq 3 ]; then
-                        echo "Auth service failed after 3 retries"
-                        docker rm -f test_auth
-                        exit 1
-                      fi
-                    done
-                    docker rm -f test_auth
+                    docker run -d --name test_db -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_DB=itdiagnostics -p 5432:5432 postgres:15
+                    sleep 15
                     """
 
-                    // Test case_service
+                    // Run auth_service with ENV vars for DB if needed
                     sh """
-                    docker run -d --name test_case -p 9001:5001 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service
-                    for i in \$(seq 1 3); do
-                      sleep 10
-                      if curl -f http://localhost:9001/; then
-                        echo "Case service sanity test passed"
-                        break
-                      else
-                        echo "Case service not ready yet, retrying..."
-                      fi
-                      if [ \$i -eq 3 ]; then
-                        echo "Case service failed after 3 retries"
-                        docker rm -f test_case
-                        exit 1
-                      fi
-                    done
-                    docker rm -f test_case
+                    docker run -d --name test_auth -e DATABASE_URI=${AUTH_DB_URI} -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
                     """
 
-                    // Test diagnostic_service
+                    // Wait longer for auth_service to come up, e.g., 30 seconds
+                    sh "sleep 30"
+
+                    // Try registering a user locally
                     sh """
-                    docker run -d --name test_diag -p 9002:5002 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service
-                    for i in \$(seq 1 3); do
-                      sleep 10
-                      if curl -f http://localhost:9002/; then
-                        echo "Diagnostic service sanity test passed"
-                        break
-                      else
-                        echo "Diagnostic service not ready yet, retrying..."
-                      fi
-                      if [ \$i -eq 3 ]; then
-                        echo "Diagnostic service failed after 3 retries"
-                        docker rm -f test_diag
-                        exit 1
-                      fi
-                    done
-                    docker rm -f test_diag
+                    curl -f -X POST -H 'Content-Type: application/json' \
+                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
+                      http://localhost:9000/register || (echo "User registration failed locally" && exit 1)
                     """
 
-                    // Test frontend
+                    // Try logging in
                     sh """
-                    docker run -d --name test_frontend -p 9003:3000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend
-                    for i in \$(seq 1 3); do
-                      sleep 10
-                      if curl -f http://localhost:9003/; then
-                        echo "Frontend sanity test passed"
-                        break
-                      else
-                        echo "Frontend not ready yet, retrying..."
-                      fi
-                      if [ \$i -eq 3 ]; then
-                        echo "Frontend failed after 3 retries"
-                        docker rm -f test_frontend
-                        exit 1
-                      fi
-                    done
-                    docker rm -f test_frontend
+                    TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
+                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
+                      http://localhost:9000/login | jq -r '.access_token')
+
+                    if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
+                      echo "Login failed locally"
+                      exit 1
+                    fi
+                    echo "Local auth_service sanity test passed with user register/login."
                     """
+
+                    // Cleanup containers
+                    sh "docker rm -f test_auth"
+                    sh "docker rm -f test_db"
                 }
             }
         }
@@ -132,7 +94,6 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
-                    // Ensure the kubeconfig has inline certs and no permission issues
                     sh 'kubectl apply -f kubernetes/namespace.yaml'
                     sh 'kubectl apply -f kubernetes/secrets-configmap.yaml'
                     sh 'kubectl apply -f kubernetes/postgres.yaml'
@@ -161,21 +122,21 @@ pipeline {
         stage('Integration Tests') {
             steps {
                 script {
-                    // Check frontend
+                    // Check frontend after deploy
                     sh 'curl -f http://frontend.local || (echo "Frontend not responding after deploy" && exit 1)'
 
-                    // Register user
+                    // Register user in the deployed environment
                     sh """
                     curl -f -X POST -H 'Content-Type: application/json' \
-                        -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth.local/register || (echo "User registration failed" && exit 1)
+                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
+                      http://auth.local/register || (echo "User registration failed after deploy" && exit 1)
                     """
 
-                    // Login and get token
+                    // Login after deploy
                     sh """
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' http://auth.local/login | jq -r '.access_token')
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
-                      echo "Failed to obtain JWT token"
+                      echo "Login failed after deploy"
                       exit 1
                     fi
                     echo "TOKEN=\$TOKEN" > token_env.sh
@@ -183,22 +144,22 @@ pipeline {
 
                     sh '. ./token_env.sh'
 
-                    // Create a case
+                    // Create a case after deploy
                     sh """
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
-                        http://case.local/cases || (echo "Case creation failed" && exit 1)
+                        http://case.local/cases || (echo "Case creation failed after deploy" && exit 1)
                     """
 
-                    // Verify case
+                    // Verify the case is listed
                     sh """
                     CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
                     echo "Received cases: \$CASES"
-                    echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
+                    echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found after deploy" && exit 1)
                     """
 
-                    // Diagnostic check
-                    sh 'curl -f http://diagnostic.local/download_script/1 || (echo "Diagnostic service not responding" && exit 1)'
+                    // Check diagnostic service endpoint after deploy
+                    sh 'curl -f http://diagnostic.local/download_script/1 || (echo "Diagnostic service not responding after deploy" && exit 1)'
                 }
             }
         }
@@ -206,7 +167,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully with local register/login test before push and full integration tests after deploy!'
         }
         failure {
             echo 'Some stage failed. Check logs.'
