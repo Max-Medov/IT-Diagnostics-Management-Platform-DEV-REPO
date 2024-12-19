@@ -89,13 +89,16 @@ pipeline {
         stage('Wait for Pods') {
             steps {
                 script {
-                    sh "kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=180s"
-                    sh "kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=180s"
-                    sh "kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=180s"
-                    sh "kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE} --timeout=180s"
+                    sh """
+                    # Ensure all services are rolled out successfully
+                    kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE} --timeout=180s
 
                     # Check frontend availability
-                    sh 'curl -f http://frontend.local || (echo "Frontend not responding" && exit 1)'
+                    curl -f http://frontend.local || (echo "Frontend not responding" && exit 1)
+                    """
                 }
             }
         }
@@ -151,4 +154,3 @@ pipeline {
         }
     }
 }
-
