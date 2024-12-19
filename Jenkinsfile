@@ -22,7 +22,7 @@ pipeline {
                 sh """
                    # Create and activate a Python virtual environment
                    python3 -m venv venv
-                   source venv/bin/activate
+                   . venv/bin/activate
 
                    # Upgrade pip
                    pip install --upgrade pip
@@ -123,15 +123,15 @@ pipeline {
                     script {
                         // Register a new user
                         sh """
-                        curl -f -X POST -H 'Content-Type: application/json' \
-                            -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
+                        curl -f -X POST -H 'Content-Type: application/json' \\
+                            -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \\
                             http://auth.local/register || (echo "User registration failed" && exit 1)
                         """
 
                         // Login and obtain token
                         sh """
-                        TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
-                                 -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
+                        TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \\
+                                 -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \\
                                  http://auth.local/login | jq -r '.access_token')
 
                         if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
@@ -146,8 +146,8 @@ pipeline {
 
                         // Create a case using the token
                         sh """
-                        curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
-                            -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
+                        curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \\
+                            -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \\
                             http://case.local/cases || (echo "Case creation failed" && exit 1)
                         """
                     }
