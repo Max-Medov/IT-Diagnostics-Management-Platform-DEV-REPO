@@ -10,10 +10,6 @@ pipeline {
         KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id"
         TEST_USER = "testuser"
         TEST_PASS = "testpass"
-        
-        # Set a dummy DB connection if needed, or ensure auth_service can run without DB
-        # Adjust these ENV vars to what auth_service needs to run locally.
-        AUTH_DB_URI = "postgresql://postgres:yourpassword@db:5432/itdiagnostics"
     }
 
     stages {
@@ -37,44 +33,26 @@ pipeline {
         stage('Pre-Push Sanity Tests') {
             steps {
                 script {
-                    // If auth_service needs a DB, run a DB container first. Adjust if your DB is different.
-                    // If not needed, remove these lines.
+                    // We'll just test the auth_service container for a response on `/`.
+                    // Increase retries to 5, sleep 10s each attempt.
                     sh """
-                    docker run -d --name test_db -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_DB=itdiagnostics -p 5432:5432 postgres:15
-                    sleep 15
+                    docker run -d --name test_auth -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
+                    for i in \$(seq 1 5); do
+                      sleep 10
+                      if curl -f http://localhost:9000/; then
+                        echo "Auth service sanity test passed"
+                        docker rm -f test_auth
+                        exit 0
+                      else
+                        echo "Auth service not responding yet (attempt \$i), retrying..."
+                      fi
+                      if [ \$i -eq 5 ]; then
+                        echo "Auth service never responded after 5 attempts"
+                        docker rm -f test_auth
+                        exit 1
+                      fi
+                    done
                     """
-
-                    // Run auth_service with ENV vars for DB if needed
-                    sh """
-                    docker run -d --name test_auth -e DATABASE_URI=${AUTH_DB_URI} -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
-                    """
-
-                    // Wait longer for auth_service to come up, e.g., 30 seconds
-                    sh "sleep 30"
-
-                    // Try registering a user locally
-                    sh """
-                    curl -f -X POST -H 'Content-Type: application/json' \
-                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
-                      http://localhost:9000/register || (echo "User registration failed locally" && exit 1)
-                    """
-
-                    // Try logging in
-                    sh """
-                    TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
-                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
-                      http://localhost:9000/login | jq -r '.access_token')
-
-                    if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
-                      echo "Login failed locally"
-                      exit 1
-                    fi
-                    echo "Local auth_service sanity test passed with user register/login."
-                    """
-
-                    // Cleanup containers
-                    sh "docker rm -f test_auth"
-                    sh "docker rm -f test_db"
                 }
             }
         }
@@ -122,17 +100,17 @@ pipeline {
         stage('Integration Tests') {
             steps {
                 script {
-                    // Check frontend after deploy
+                    // Check frontend after deployment
                     sh 'curl -f http://frontend.local || (echo "Frontend not responding after deploy" && exit 1)'
 
-                    // Register user in the deployed environment
+                    // Register user
                     sh """
                     curl -f -X POST -H 'Content-Type: application/json' \
-                      -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' \
-                      http://auth.local/register || (echo "User registration failed after deploy" && exit 1)
+                        -d '{"username":"${TEST_USER}", "password":"${TEST_PASS}"}' \
+                        http://auth.local/register || (echo "User registration failed after deploy" && exit 1)
                     """
 
-                    // Login after deploy
+                    // Login
                     sh """
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' http://auth.local/login | jq -r '.access_token')
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
@@ -144,14 +122,14 @@ pipeline {
 
                     sh '. ./token_env.sh'
 
-                    // Create a case after deploy
+                    // Create a case
                     sh """
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
                         http://case.local/cases || (echo "Case creation failed after deploy" && exit 1)
                     """
 
-                    // Verify the case is listed
+                    // Verify case
                     sh """
                     CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
                     echo "Received cases: \$CASES"
@@ -167,7 +145,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully with local register/login test before push and full integration tests after deploy!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
             echo 'Some stage failed. Check logs.'
