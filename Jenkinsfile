@@ -70,7 +70,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "kubeconfig-credentials-id", variable: 'KUBECONFIG')]) {
-                    sh 'kubectl apply -f kubernetes/namespace.yaml'
+                    sh 'kubectl apply -f ./kubernetes/namespace.yaml'
                     sh 'kubectl apply -f kubernetes/secrets-configmap.yaml'
                     sh 'kubectl apply -f kubernetes/postgres.yaml'
                     sh 'kubectl apply -f kubernetes/auth-service.yaml'
