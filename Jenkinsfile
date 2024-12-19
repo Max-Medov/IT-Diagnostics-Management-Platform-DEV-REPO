@@ -20,20 +20,30 @@ pipeline {
         stage('Install & Test Backend') {
             steps {
                 sh """
+                   # Create and activate a Python virtual environment
+                   python3 -m venv venv
+                   source venv/bin/activate
+
+                   # Upgrade pip
+                   pip install --upgrade pip
+
                    # Auth Service Tests
                    cd backend/auth_service
                    pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
-                   
+                   python -m pytest tests/ --maxfail=1 --disable-warnings -v
+
                    # Case Service Tests
                    cd ../case_service
                    pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
-                   
+                   python -m pytest tests/ --maxfail=1 --disable-warnings -v
+
                    # Diagnostic Service Tests
                    cd ../diagnostic_service
                    pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
+                   python -m pytest tests/ --maxfail=1 --disable-warnings -v
+
+                   # Deactivate the virtual environment
+                   deactivate
                 """
             }
         }
@@ -51,9 +61,9 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service -f backend/auth_service/Dockerfile backend"
-                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service -f backend/case_service/Dockerfile backend"
-                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service -f backend/diagnostic_service/Dockerfile backend"
+                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service -f backend/auth_service/Dockerfile backend/auth_service"
+                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service -f backend/case_service/Dockerfile backend/case_service"
+                    sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service -f backend/diagnostic_service/Dockerfile backend/diagnostic_service"
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend -f frontend/Dockerfile frontend"
                 }
             }
@@ -62,11 +72,13 @@ pipeline {
         stage('Push Images to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: "${env.REGISTRY_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo ${DOCKER_PASS} | docker login ${REGISTRY} -u ${DOCKER_USER} --password-stdin"
-                    sh "docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service"
-                    sh "docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service"
-                    sh "docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service"
-                    sh "docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend"
+                    sh """
+                       echo ${DOCKER_PASS} | docker login ${REGISTRY} -u ${DOCKER_USER} --password-stdin
+                       docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
+                       docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service
+                       docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service
+                       docker push ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend
+                    """
                 }
             }
         }
@@ -74,14 +86,16 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
-                    sh 'kubectl apply -f kubernetes/namespace.yaml'
-                    sh 'kubectl apply -f kubernetes/secrets-configmap.yaml'
-                    sh 'kubectl apply -f kubernetes/postgres.yaml'
-                    sh 'kubectl apply -f kubernetes/auth-service.yaml'
-                    sh 'kubectl apply -f kubernetes/case-service.yaml'
-                    sh 'kubectl apply -f kubernetes/diagnostic-service.yaml'
-                    sh 'kubectl apply -f kubernetes/frontend.yaml'
-                    sh 'kubectl apply -f kubernetes/ingress.yaml'
+                    sh """
+                       kubectl apply -f kubernetes/namespace.yaml
+                       kubectl apply -f kubernetes/secrets-configmap.yaml
+                       kubectl apply -f kubernetes/postgres.yaml
+                       kubectl apply -f kubernetes/auth-service.yaml
+                       kubectl apply -f kubernetes/case-service.yaml
+                       kubectl apply -f kubernetes/diagnostic-service.yaml
+                       kubectl apply -f kubernetes/frontend.yaml
+                       kubectl apply -f kubernetes/ingress.yaml
+                    """
                 }
             }
         }
