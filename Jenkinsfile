@@ -11,8 +11,20 @@ pipeline {
     }
 
     stages {
+        stage('Install Dependencies') {
+            steps {
+                sh """
+                   # Ensure pip is up-to-date
+                   python3 -m pip install --upgrade pip setuptools wheel --user
+                   # Install pytest so we can run tests universally
+                   python3 -m pip install pytest --user
+                """
+            }
+        }
+
         stage('Checkout') {
             steps {
+                // Clones the APP repo which has the app source code and Dockerfiles
                 git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform.git'
             }
         }
@@ -20,20 +32,17 @@ pipeline {
         stage('Install & Test Backend') {
             steps {
                 sh """
-                   # Auth Service Tests
                    cd backend/auth_service
-                   pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
+                   python3 -m pip install -r requirements.txt --user
+                   python3 -m pytest tests/ --maxfail=1 --disable-warnings -v
                    
-                   # Case Service Tests
                    cd ../case_service
-                   pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
+                   python3 -m pip install -r requirements.txt --user
+                   python3 -m pytest tests/ --maxfail=1 --disable-warnings -v
                    
-                   # Diagnostic Service Tests
                    cd ../diagnostic_service
-                   pip install -r requirements.txt
-                   pytest tests/ --maxfail=1 --disable-warnings -v
+                   python3 -m pip install -r requirements.txt --user
+                   python3 -m pytest tests/ --maxfail=1 --disable-warnings -v
                 """
             }
         }
@@ -90,7 +99,6 @@ pipeline {
             steps {
                 script {
                     sh """
-                    # Ensure all services are rolled out successfully
                     kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=180s
                     kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=180s
                     kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=180s
