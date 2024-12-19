@@ -31,16 +31,13 @@ pipeline {
             }
         }
 
-        // Pre-Push Sanity Tests
-        // If you have no /health endpoint, use another endpoint that returns 200
-        // If you really have no such endpoint, consider skipping this step.
         stage('Pre-Push Sanity Tests') {
             steps {
                 script {
-                    // Test auth_service image using `/` endpoint or any other that returns 200 OK
+                    // Test auth_service
                     sh """
                     docker run -d --name test_auth -p 9000:5000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
-                    for i in {1..3}; do
+                    for i in \$(seq 1 3); do
                       sleep 10
                       if curl -f http://localhost:9000/; then
                         echo "Auth service sanity test passed"
@@ -57,10 +54,10 @@ pipeline {
                     docker rm -f test_auth
                     """
 
-                    // Test case_service image
+                    // Test case_service
                     sh """
                     docker run -d --name test_case -p 9001:5001 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service
-                    for i in {1..3}; do
+                    for i in \$(seq 1 3); do
                       sleep 10
                       if curl -f http://localhost:9001/; then
                         echo "Case service sanity test passed"
@@ -77,10 +74,10 @@ pipeline {
                     docker rm -f test_case
                     """
 
-                    // Test diagnostic_service image
+                    // Test diagnostic_service
                     sh """
                     docker run -d --name test_diag -p 9002:5002 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service
-                    for i in {1..3}; do
+                    for i in \$(seq 1 3); do
                       sleep 10
                       if curl -f http://localhost:9002/; then
                         echo "Diagnostic service sanity test passed"
@@ -97,10 +94,10 @@ pipeline {
                     docker rm -f test_diag
                     """
 
-                    // Test frontend image
+                    // Test frontend
                     sh """
                     docker run -d --name test_frontend -p 9003:3000 ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend
-                    for i in {1..3}; do
+                    for i in \$(seq 1 3); do
                       sleep 10
                       if curl -f http://localhost:9003/; then
                         echo "Frontend sanity test passed"
@@ -135,6 +132,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
+                    // Ensure the kubeconfig has inline certs and no permission issues
                     sh 'kubectl apply -f kubernetes/namespace.yaml'
                     sh 'kubectl apply -f kubernetes/secrets-configmap.yaml'
                     sh 'kubectl apply -f kubernetes/postgres.yaml'
@@ -163,7 +161,7 @@ pipeline {
         stage('Integration Tests') {
             steps {
                 script {
-                    // Check frontend availability via ingress
+                    // Check frontend
                     sh 'curl -f http://frontend.local || (echo "Frontend not responding after deploy" && exit 1)'
 
                     // Register user
@@ -173,10 +171,9 @@ pipeline {
                         http://auth.local/register || (echo "User registration failed" && exit 1)
                     """
 
-                    // Login and obtain token
+                    // Login and get token
                     sh """
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' -d '{"username":"${TEST_USER}","password":"${TEST_PASS}"}' http://auth.local/login | jq -r '.access_token')
-
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
                       echo "Failed to obtain JWT token"
                       exit 1
@@ -193,14 +190,14 @@ pipeline {
                         http://case.local/cases || (echo "Case creation failed" && exit 1)
                     """
 
-                    // Verify case exists
+                    // Verify case
                     sh """
                     CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
                     """
 
-                    // Check diagnostic service endpoint
+                    // Diagnostic check
                     sh 'curl -f http://diagnostic.local/download_script/1 || (echo "Diagnostic service not responding" && exit 1)'
                 }
             }
@@ -209,7 +206,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully with pre-push sanity tests and integration tests!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
             echo 'Some stage failed. Check logs.'
