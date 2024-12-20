@@ -7,7 +7,7 @@ pipeline {
         DOCKER_ORG = "maxmedov"
         IMAGE_PREFIX = "it-diagnostics-management-platform"
         KUBE_NAMESPACE = "it-diagnostics"
-        KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id"
+        KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id" // Ensure this matches the credential ID for kubeconfig in Jenkins
         TEST_USER = "testuser"
         TEST_PASS = "testpass"
     }
@@ -80,7 +80,7 @@ pipeline {
         // Deploy Kubernetes configurations
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: "kubeconfig-credentials-id", variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
                     dir('kubernetes-config/kubernetes') {
                         sh """
                         kubectl apply -f namespace.yaml --validate=false
