@@ -139,6 +139,9 @@ pipeline {
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
 
+                    # Test diagnostic-service: retrieve script
+                    curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5002/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
+
                     # Kill port-forwarding processes
                     kill \$AUTH_PF_PID || true
                     kill \$CASE_PF_PID || true
