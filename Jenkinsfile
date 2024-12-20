@@ -59,17 +59,19 @@ pipeline {
         // Deploy Kubernetes configurations
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: "kubeconfig-credentials-id", variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
                     dir('kubernetes-config/kubernetes') {
                         sh """
-                        kubectl apply -f namespace.yaml 
-                        kubectl apply -f secrets-configmap.yaml 
-                        kubectl apply -f postgres.yaml 
-                        kubectl apply -f auth-service.yaml 
-                        kubectl apply -f case-service.yaml 
-                        kubectl apply -f diagnostic-service.yaml 
-                        kubectl apply -f frontend.yaml 
-                        kubectl apply -f ingress.yaml 
+                        kubectl apply -f namespace.yaml
+                        kubectl apply -f secrets-configmap.yaml
+                        kubectl apply -f postgres.yaml
+                        kubectl apply -f auth-service.yaml
+                        kubectl apply -f case-service.yaml
+                        kubectl apply -f diagnostic-service.yaml
+                        kubectl apply -f frontend.yaml
+                        kubectl apply -f ingress.yaml
+                        kubectl apply -f prometheus.yaml
+                        kubectl apply -f grafana.yaml
                         """
                     }
                 }
@@ -85,6 +87,8 @@ pipeline {
                     kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=300s
                     kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=300s
                     kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE} --timeout=300s
+                    kubectl rollout status deployment/prometheus -n ${KUBE_NAMESPACE} --timeout=300s
+                    kubectl rollout status deployment/grafana -n ${KUBE_NAMESPACE} --timeout=300s
                     """
                 }
             }
