@@ -162,5 +162,7 @@ pipeline {
             echo 'Some stage failed. Check logs.'
         }
         always {
+
+        }
     }
 }
