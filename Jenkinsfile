@@ -90,7 +90,7 @@ pipeline {
             }
         }
 
-        // Perform integration tests with user existence check
+        // Perform integration tests
         stage('Integration Tests') {
             steps {
                 script {
@@ -140,7 +140,8 @@ pipeline {
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
 
                     # Kill port-forwarding processes
-                    kill \$AUTH_PF_PID \$CASE_PF_PID
+                    kill \$AUTH_PF_PID || true
+                    kill \$CASE_PF_PID || true
                     """
                 }
             }
