@@ -1,0 +1,21 @@
+{
+  "dashboard": {
+    "title": "Auth Service Metrics",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "HTTP Requests",
+        "targets": [
+          {
+            "expr": "http_requests_total{job='kubernetes-pods'}",
+            "legendFormat": "{{method}} {{status}}",
+            "refId": "A"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 16,
+    "version": 1
+  }
+}
+
