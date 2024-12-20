@@ -101,7 +101,7 @@ pipeline {
                     kubectl port-forward svc/case-service -n ${KUBE_NAMESPACE} 5001:5001 > case-pf.log 2>&1 &
                     CASE_PF_PID=\$!
 
-                    # Wait for port forwarding to start
+                    # Wait for port-forwarding to start and services to be available
                     sleep 5
 
                     # Test auth-service: check if user exists
