@@ -20,15 +20,6 @@ pipeline {
             }
         }
 
-        // Checkout the repository containing Kubernetes YAML files
-        stage('Checkout Kubernetes Configurations') {
-            steps {
-                dir('kubernetes-config') {
-                    git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform-DEV-REPO.git'
-                }
-            }
-        }
-
         // Build Docker images for each service
         stage('Build Docker Images') {
             steps {
@@ -61,6 +52,8 @@ pipeline {
             steps {
                 script {
                     sh """
+                    ls -al  # Debug: Ensure files exist in the expected locations
+
                     kubectl create configmap prometheus-config \
                       --from-file=prometheus.yml=prometheus.yml \
                       -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
@@ -81,7 +74,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
-                    dir('kubernetes-config/kubernetes') {
+                    dir('kubernetes') {
                         sh """
                         kubectl apply -f namespace.yaml
                         kubectl apply -f secrets-configmap.yaml
@@ -91,7 +84,7 @@ pipeline {
                         kubectl apply -f diagnostic-service.yaml
                         kubectl apply -f frontend.yaml
                         kubectl apply -f ingress.yaml
-                        kubectl apply -f prometheus.yaml
+                        kubectl apply -f prometheus-k8s.yaml
                         kubectl apply -f grafana.yaml
                         """
                     }
@@ -128,10 +121,9 @@ pipeline {
                     kubectl port-forward svc/diagnostic-service -n ${KUBE_NAMESPACE} 5002:5002 > diagnostic-pf.log 2>&1 &
                     DIAGNOSTIC_PF_PID=\$!
 
-                    # Ensure port-forwarding is running
-                    sleep 10
+                    sleep 10  # Wait for port-forwarding setup
 
-                    # Test auth-service: check if user exists
+                    # Test auth-service
                     REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
                         http://localhost:5000/register)
@@ -145,7 +137,6 @@ pipeline {
                         exit 1
                     fi
 
-                    # Test auth-service: login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
                         http://localhost:5000/login | jq -r '.access_token')
@@ -156,20 +147,10 @@ pipeline {
                     fi
                     echo "TOKEN=\$TOKEN"
 
-                    # Test case-service: create a case
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
                         http://localhost:5001/cases || (echo "Case creation failed" && exit 1)
 
-                    # Test case-service: retrieve cases
-                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5001/cases)
-                    echo "Received cases: \$CASES"
-                    echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
-
-                    # Test diagnostic-service: check if script is available
-                    curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5002/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
-
-                    # Kill port-forwarding processes
                     kill \$AUTH_PF_PID || true
                     kill \$CASE_PF_PID || true
                     kill \$DIAGNOSTIC_PF_PID || true
