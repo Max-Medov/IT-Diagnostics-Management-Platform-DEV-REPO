@@ -83,14 +83,14 @@ pipeline {
                 withCredentials([file(credentialsId: "kubeconfig-credentials-id", variable: 'KUBECONFIG')]) {
                     dir('kubernetes-config/kubernetes') {
                         sh """
-                        kubectl apply -f namespace.yaml --validate=false
-                        kubectl apply -f secrets-configmap.yaml --validate=false
-                        kubectl apply -f postgres.yaml --validate=false
-                        kubectl apply -f auth-service.yaml --validate=false
-                        kubectl apply -f case-service.yaml --validate=false
-                        kubectl apply -f diagnostic-service.yaml --validate=false
-                        kubectl apply -f frontend.yaml --validate=false
-                        kubectl apply -f ingress.yaml --validate=false
+                        kubectl apply -f namespace.yaml 
+                        kubectl apply -f secrets-configmap.yaml 
+                        kubectl apply -f postgres.yaml 
+                        kubectl apply -f auth-service.yaml 
+                        kubectl apply -f case-service.yaml 
+                        kubectl apply -f diagnostic-service.yaml 
+                        kubectl apply -f frontend.yaml 
+                        kubectl apply -f ingress.yaml 
                         """
                     }
                 }
