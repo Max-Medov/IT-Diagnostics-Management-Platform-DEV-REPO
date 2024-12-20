@@ -95,14 +95,16 @@ pipeline {
             steps {
                 script {
                     sh """
-                    # Port-forward services to localhost
+                    # Run port-forwarding in the background
                     kubectl port-forward svc/auth-service -n ${KUBE_NAMESPACE} 5000:5000 > auth-pf.log 2>&1 &
                     AUTH_PF_PID=\$!
                     kubectl port-forward svc/case-service -n ${KUBE_NAMESPACE} 5001:5001 > case-pf.log 2>&1 &
                     CASE_PF_PID=\$!
+                    kubectl port-forward svc/diagnostic-service -n ${KUBE_NAMESPACE} 5002:5002 > diagnostic-pf.log 2>&1 &
+                    DIAGNOSTIC_PF_PID=\$!
 
-                    # Wait for port forwarding to start
-                    sleep 5
+                    # Ensure port-forwarding is running
+                    sleep 10  # Wait for 10 seconds to make sure port-forwarding is set
 
                     # Test auth-service: check if user exists
                     REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
@@ -139,9 +141,13 @@ pipeline {
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
 
+                    # Test diagnostic-service: check if script is available
+                    curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5002/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
+
                     # Kill port-forwarding processes
                     kill \$AUTH_PF_PID || true
                     kill \$CASE_PF_PID || true
+                    kill \$DIAGNOSTIC_PF_PID || true
                     """
                 }
             }
