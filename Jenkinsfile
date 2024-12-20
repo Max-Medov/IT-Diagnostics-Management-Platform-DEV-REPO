@@ -102,10 +102,10 @@ pipeline {
             steps {
                 script {
                     sh """
-                    kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=180s
-                    kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=180s
-                    kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=180s
-                    kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/auth-service -n ${KUBE_NAMESPACE} --timeout=300s
+                    kubectl rollout status deployment/case-service -n ${KUBE_NAMESPACE} --timeout=300s
+                    kubectl rollout status deployment/diagnostic-service -n ${KUBE_NAMESPACE} --timeout=300s
+                    kubectl rollout status deployment/frontend -n ${KUBE_NAMESPACE} --timeout=300s
                     """
                 }
             }
