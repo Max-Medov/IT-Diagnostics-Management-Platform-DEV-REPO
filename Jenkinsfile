@@ -90,7 +90,7 @@ pipeline {
             }
         }
 
-        // Perform integration tests with port forwarding
+        // Perform integration tests with user existence check
         stage('Integration Tests') {
             steps {
                 script {
@@ -104,10 +104,19 @@ pipeline {
                     # Wait for port forwarding to start
                     sleep 5
 
-                    # Test auth-service: register a user
-                    curl -f -X POST -H 'Content-Type: application/json' \
+                    # Test auth-service: check if user exists
+                    REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://localhost:5000/register || (echo "User registration failed" && exit 1)
+                        http://localhost:5000/register)
+
+                    if [ "\$REGISTER_RESPONSE" = "409" ]; then
+                        echo "User already exists. Proceeding with login..."
+                    elif [ "\$REGISTER_RESPONSE" = "201" ]; then
+                        echo "User registered successfully."
+                    else
+                        echo "Unexpected error during user registration. HTTP Status: \$REGISTER_RESPONSE"
+                        exit 1
+                    fi
 
                     # Test auth-service: login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
