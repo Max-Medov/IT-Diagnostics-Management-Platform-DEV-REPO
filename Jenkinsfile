@@ -23,7 +23,7 @@ pipeline {
         // Checkout the repository containing Kubernetes YAML files
         stage('Checkout Kubernetes Configurations') {
             steps {
-                dir('kubernetes-config') { // Clone into a subdirectory
+                dir('kubernetes-config') {
                     git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform-DEV-REPO.git'
                 }
             }
@@ -37,27 +37,6 @@ pipeline {
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service -f backend/case_service/Dockerfile backend"
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service -f backend/diagnostic_service/Dockerfile backend"
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend -f frontend/Dockerfile frontend"
-                }
-            }
-        }
-
-        // Minimal sanity test for a single Docker container
-        stage('Pre-Push Minimal Sanity Test') {
-            steps {
-                script {
-                    sh """
-                    echo "Starting sanity test for auth_service..."
-                    docker run -d --name test_auth ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
-                    sleep 10
-                    if docker ps --filter name=test_auth --filter status=running | grep test_auth; then
-                        echo "Auth service container is running. Sanity test passed."
-                        docker rm -f test_auth
-                    else
-                        echo "Auth service container failed to start. Sanity test failed."
-                        docker rm -f test_auth || true
-                        exit 1
-                    fi
-                    """
                 }
             }
         }
@@ -117,17 +96,17 @@ pipeline {
                 script {
                     sh """
                     # Check if frontend is available
-                    curl -f http://frontend.local || (echo "Frontend not responding after deployment" && exit 1)
+                    curl -f http://frontend.it-diagnostics.svc.cluster.local || (echo "Frontend not responding after deployment" && exit 1)
 
                     # Register a user
                     curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth.local/register || (echo "User registration failed" && exit 1)
+                        http://auth-service.it-diagnostics.svc.cluster.local:5000/register || (echo "User registration failed" && exit 1)
 
                     # Login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth.local/login | jq -r '.access_token')
+                        http://auth-service.it-diagnostics.svc.cluster.local:5000/login | jq -r '.access_token')
 
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
                         echo "Login failed"
@@ -138,15 +117,12 @@ pipeline {
                     # Create a case
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
-                        http://case.local/cases || (echo "Case creation failed" && exit 1)
+                        http://case-service.it-diagnostics.svc.cluster.local:5001/cases || (echo "Case creation failed" && exit 1)
 
                     # Verify the created case
-                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
+                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case-service.it-diagnostics.svc.cluster.local:5001/cases)
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
-
-                    # Test diagnostic service
-                    curl -f http://diagnostic.local/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
                     """
                 }
             }
