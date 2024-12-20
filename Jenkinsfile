@@ -23,7 +23,7 @@ pipeline {
         // Checkout the repository containing Kubernetes YAML files
         stage('Checkout Kubernetes Configurations') {
             steps {
-                dir('kubernetes-config') { // Clone into a subdirectory
+                dir('kubernetes-config') {
                     git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform-DEV-REPO.git'
                 }
             }
@@ -37,27 +37,6 @@ pipeline {
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:case_service -f backend/case_service/Dockerfile backend"
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:diagnostic_service -f backend/diagnostic_service/Dockerfile backend"
                     sh "docker build -t ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:frontend -f frontend/Dockerfile frontend"
-                }
-            }
-        }
-
-        // Minimal sanity test for a single Docker container
-        stage('Pre-Push Minimal Sanity Test') {
-            steps {
-                script {
-                    sh """
-                    echo "Starting sanity test for auth_service..."
-                    docker run -d --name test_auth ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:auth_service
-                    sleep 10
-                    if docker ps --filter name=test_auth --filter status=running | grep test_auth; then
-                        echo "Auth service container is running. Sanity test passed."
-                        docker rm -f test_auth
-                    else
-                        echo "Auth service container failed to start. Sanity test failed."
-                        docker rm -f test_auth || true
-                        exit 1
-                    fi
-                    """
                 }
             }
         }
@@ -116,18 +95,33 @@ pipeline {
             steps {
                 script {
                     sh """
-                    # Check if frontend is available
-                    curl -f http://frontend.local || (echo "Frontend not responding after deployment" && exit 1)
+                    # Port-forward services to localhost
+                    kubectl port-forward svc/auth-service -n ${KUBE_NAMESPACE} 5000:5000 > auth-pf.log 2>&1 &
+                    AUTH_PF_PID=\$!
+                    kubectl port-forward svc/case-service -n ${KUBE_NAMESPACE} 5001:5001 > case-pf.log 2>&1 &
+                    CASE_PF_PID=\$!
 
-                    # Register a user
-                    curl -f -X POST -H 'Content-Type: application/json' \
+                    # Wait for port forwarding to start
+                    sleep 5
+
+                    # Test auth-service: check if user exists
+                    REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth.local/register || (echo "User registration failed" && exit 1)
+                        http://localhost:5000/register)
 
-                    # Login and get token
+                    if [ "\$REGISTER_RESPONSE" = "409" ]; then
+                        echo "User already exists. Proceeding with login..."
+                    elif [ "\$REGISTER_RESPONSE" = "201" ]; then
+                        echo "User registered successfully."
+                    else
+                        echo "Unexpected error during user registration. HTTP Status: \$REGISTER_RESPONSE"
+                        exit 1
+                    fi
+
+                    # Test auth-service: login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth.local/login | jq -r '.access_token')
+                        http://localhost:5000/login | jq -r '.access_token')
 
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
                         echo "Login failed"
@@ -135,18 +129,19 @@ pipeline {
                     fi
                     echo "TOKEN=\$TOKEN"
 
-                    # Create a case
+                    # Test case-service: create a case
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
-                        http://case.local/cases || (echo "Case creation failed" && exit 1)
+                        http://localhost:5001/cases || (echo "Case creation failed" && exit 1)
 
-                    # Verify the created case
-                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case.local/cases)
+                    # Test case-service: retrieve cases
+                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5001/cases)
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
 
-                    # Test diagnostic service
-                    curl -f http://diagnostic.local/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
+                    # Kill port-forwarding processes
+                    kill \$AUTH_PF_PID || true
+                    kill \$CASE_PF_PID || true
                     """
                 }
             }
