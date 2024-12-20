@@ -7,7 +7,7 @@ pipeline {
         DOCKER_ORG = "maxmedov"
         IMAGE_PREFIX = "it-diagnostics-management-platform"
         KUBE_NAMESPACE = "it-diagnostics"
-        KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id" // Ensure this matches the credential ID for kubeconfig in Jenkins
+        KUBECONFIG_CREDENTIALS_ID = "kubeconfig-credentials-id"
         TEST_USER = "testuser"
         TEST_PASS = "testpass"
     }
@@ -80,17 +80,17 @@ pipeline {
         // Deploy Kubernetes configurations
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: "kubeconfig-credentials-id", variable: 'KUBECONFIG')]) {
                     dir('kubernetes-config/kubernetes') {
                         sh """
-                        kubectl apply -f namespace.yaml --validate=false
-                        kubectl apply -f secrets-configmap.yaml --validate=false
-                        kubectl apply -f postgres.yaml --validate=false
-                        kubectl apply -f auth-service.yaml --validate=false
-                        kubectl apply -f case-service.yaml --validate=false
-                        kubectl apply -f diagnostic-service.yaml --validate=false
-                        kubectl apply -f frontend.yaml --validate=false
-                        kubectl apply -f ingress.yaml --validate=false
+                        kubectl apply -f namespace.yaml 
+                        kubectl apply -f secrets-configmap.yaml 
+                        kubectl apply -f postgres.yaml 
+                        kubectl apply -f auth-service.yaml 
+                        kubectl apply -f case-service.yaml 
+                        kubectl apply -f diagnostic-service.yaml 
+                        kubectl apply -f frontend.yaml 
+                        kubectl apply -f ingress.yaml 
                         """
                     }
                 }
