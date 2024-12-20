@@ -160,9 +160,11 @@ pipeline {
         }
         failure {
             echo 'Some stage failed. Check logs.'
+            // Comment out the cleanWs() step to retain the workspace on failure
+            // cleanWs()
         }
         always {
-
+            // Add a placeholder step or uncomment the cleanWs() step
+            echo 'This runs in the always block'
+            // cleanWs()
         }
-    }
-}
