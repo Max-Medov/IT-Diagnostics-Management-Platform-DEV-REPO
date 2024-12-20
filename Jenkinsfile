@@ -156,12 +156,12 @@ pipeline {
     post {
         success {
             echo 'Pipeline completed successfully!'
+            cleanWs()
         }
         failure {
             echo 'Some stage failed. Check logs.'
         }
         always {
-            cleanWs()
         }
     }
 }
