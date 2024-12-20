@@ -100,6 +100,8 @@ pipeline {
                     AUTH_PF_PID=\$!
                     kubectl port-forward svc/case-service -n ${KUBE_NAMESPACE} 5001:5001 > case-pf.log 2>&1 &
                     CASE_PF_PID=\$!
+                    kubectl port-forward svc/diagnostic-service -n ${KUBE_NAMESPACE} 5002:5002 > diagnostic-pf.log 2>&1 &
+                    DIAGNOSTIC_PF_PID=\$!
 
                     # Wait for port-forwarding to start and services to be available
                     sleep 5
@@ -139,12 +141,13 @@ pipeline {
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
 
-                    # Test diagnostic-service: retrieve script
+                    # Test diagnostic-service: check if script is available
                     curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5002/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
 
                     # Kill port-forwarding processes
                     kill \$AUTH_PF_PID || true
                     kill \$CASE_PF_PID || true
+                    kill \$DIAGNOSTIC_PF_PID || true
                     """
                 }
             }
