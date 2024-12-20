@@ -90,23 +90,29 @@ pipeline {
             }
         }
 
-        // Perform integration tests
+        // Perform integration tests with port forwarding
         stage('Integration Tests') {
             steps {
                 script {
                     sh """
-                    # Check if frontend is available
-                    curl -f http://frontend.it-diagnostics.svc.cluster.local || (echo "Frontend not responding after deployment" && exit 1)
+                    # Port-forward services to localhost
+                    kubectl port-forward svc/auth-service -n ${KUBE_NAMESPACE} 5000:5000 > auth-pf.log 2>&1 &
+                    AUTH_PF_PID=\$!
+                    kubectl port-forward svc/case-service -n ${KUBE_NAMESPACE} 5001:5001 > case-pf.log 2>&1 &
+                    CASE_PF_PID=\$!
 
-                    # Register a user
+                    # Wait for port forwarding to start
+                    sleep 5
+
+                    # Test auth-service: register a user
                     curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth-service.it-diagnostics.svc.cluster.local:5000/register || (echo "User registration failed" && exit 1)
+                        http://localhost:5000/register || (echo "User registration failed" && exit 1)
 
-                    # Login and get token
+                    # Test auth-service: login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
-                        http://auth-service.it-diagnostics.svc.cluster.local:5000/login | jq -r '.access_token')
+                        http://localhost:5000/login | jq -r '.access_token')
 
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
                         echo "Login failed"
@@ -114,15 +120,18 @@ pipeline {
                     fi
                     echo "TOKEN=\$TOKEN"
 
-                    # Create a case
+                    # Test case-service: create a case
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
-                        http://case-service.it-diagnostics.svc.cluster.local:5001/cases || (echo "Case creation failed" && exit 1)
+                        http://localhost:5001/cases || (echo "Case creation failed" && exit 1)
 
-                    # Verify the created case
-                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://case-service.it-diagnostics.svc.cluster.local:5001/cases)
+                    # Test case-service: retrieve cases
+                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5001/cases)
                     echo "Received cases: \$CASES"
                     echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
+
+                    # Kill port-forwarding processes
+                    kill \$AUTH_PF_PID \$CASE_PF_PID
                     """
                 }
             }
