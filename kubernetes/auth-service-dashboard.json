@@ -1,6 +1,10 @@
 {
   "dashboard": {
     "title": "Auth Service Metrics",
+    "uid": "auth-service-metrics",
+    "editable": true,
+    "schemaVersion": 16,
+    "version": 1,
     "panels": [
       {
         "type": "graph",
@@ -11,11 +15,21 @@
             "legendFormat": "{{method}} {{status}}",
             "refId": "A"
           }
-        ]
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
       }
     ],
-    "schemaVersion": 16,
-    "version": 1
-  }
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timezone": "browser"
+  },
+  "overwrite": true
 }
 
