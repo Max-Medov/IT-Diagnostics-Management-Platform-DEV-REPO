@@ -20,6 +20,15 @@ pipeline {
             }
         }
 
+        // Checkout the repository containing Kubernetes YAML and config files
+        stage('Checkout Kubernetes Configurations') {
+            steps {
+                dir('kubernetes-config') {
+                    git branch: 'main', url: 'https://github.com/Max-Medov/IT-Diagnostics-Management-Platform-DEV-REPO.git'
+                }
+            }
+        }
+
         // Build Docker images for each service
         stage('Build Docker Images') {
             steps {
@@ -47,25 +56,36 @@ pipeline {
             }
         }
 
+        // Create Kubernetes Namespace
+        stage('Create Namespace') {
+            steps {
+                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
+                    dir('kubernetes-config/kubernetes') {
+                        sh "kubectl apply -f namespace.yaml"
+                    }
+                }
+            }
+        }
+
         // Create Prometheus and Grafana ConfigMaps
         stage('Create ConfigMaps') {
             steps {
-                script {
-                    sh """
-                    ls -al  # Debug: Ensure files exist in the expected locations
+                dir('kubernetes-config') {
+                    script {
+                        sh """
+                        kubectl create configmap prometheus-config \
+                          --from-file=prometheus.yml=prometheus.yml \
+                          -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
-                    kubectl create configmap prometheus-config \
-                      --from-file=prometheus.yml=prometheus.yml \
-                      -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                        kubectl create configmap grafana-datasources \
+                          --from-file=datasources.yaml=datasources.yaml \
+                          -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
-                    kubectl create configmap grafana-datasources \
-                      --from-file=datasources.yaml=datasources.yaml \
-                      -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-
-                    kubectl create configmap grafana-dashboard \
-                      --from-file=auth-service-dashboard.json=auth-service-dashboard.json \
-                      -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                    """
+                        kubectl create configmap grafana-dashboard \
+                          --from-file=auth-service-dashboard.json=auth-service-dashboard.json \
+                          -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                        """
+                    }
                 }
             }
         }
@@ -74,9 +94,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
-                    dir('kubernetes') {
+                    dir('kubernetes-config/kubernetes') {
                         sh """
-                        kubectl apply -f namespace.yaml
                         kubectl apply -f secrets-configmap.yaml
                         kubectl apply -f postgres.yaml
                         kubectl apply -f auth-service.yaml
@@ -121,9 +140,10 @@ pipeline {
                     kubectl port-forward svc/diagnostic-service -n ${KUBE_NAMESPACE} 5002:5002 > diagnostic-pf.log 2>&1 &
                     DIAGNOSTIC_PF_PID=\$!
 
-                    sleep 10  # Wait for port-forwarding setup
+                    # Ensure port-forwarding is running
+                    sleep 10
 
-                    # Test auth-service
+                    # Test auth-service: check if user exists
                     REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
                         http://localhost:5000/register)
@@ -172,4 +192,3 @@ pipeline {
         }
     }
 }
-

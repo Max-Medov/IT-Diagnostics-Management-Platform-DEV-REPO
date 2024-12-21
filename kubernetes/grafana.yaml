@@ -30,4 +30,17 @@ spec:
       - name: grafana-datasources
         configMap:
           name: grafana-datasources
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: it-diagnostics
+spec:
+  selector:
+    app: grafana
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
 
