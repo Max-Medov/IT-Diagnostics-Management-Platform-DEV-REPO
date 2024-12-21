@@ -28,6 +28,8 @@ spec:
           mountPath: /etc/grafana/provisioning/datasources
         - name: grafana-dashboard
           mountPath: /etc/grafana/provisioning/dashboards
+        - name: grafana-dashboard-provider
+          mountPath: /etc/grafana/provisioning/dashboards/provider
       volumes:
       - name: grafana-datasources
         configMap:
@@ -35,16 +37,6 @@ spec:
       - name: grafana-dashboard
         configMap:
           name: grafana-dashboard
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana
-  namespace: it-diagnostics
-spec:
-  selector:
-    app: grafana
-  type: ClusterIP
-  ports:
-    - port: 3000
-      targetPort: 3000
+      - name: grafana-dashboard-provider
+        configMap:
+          name: grafana-dashboard-provider
