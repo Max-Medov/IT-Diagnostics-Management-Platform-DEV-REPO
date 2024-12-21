@@ -28,7 +28,7 @@ spec:
           value: "postgresql://postgres:yourpassword@postgres:5432/itdiagnostics"
         - name: SECRET_KEY
           value: "your_secret_key"
-        command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--debug"]
+        command: ["flask", "run", "--host=0.0.0.0", "--port=5000"]
 
 ---
 apiVersion: v1
