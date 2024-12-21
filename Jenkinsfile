@@ -128,6 +128,7 @@ pipeline {
                         kubectl apply -f diagnostic-service.yaml
                         kubectl apply -f frontend.yaml
                         kubectl apply -f ingress.yaml
+                        kubectl apply -f prometheus-rbac.yaml
                         kubectl apply -f prometheus-k8s.yaml
                         kubectl apply -f grafana.yaml
                         """
