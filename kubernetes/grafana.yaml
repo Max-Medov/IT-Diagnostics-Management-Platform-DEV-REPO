@@ -26,10 +26,15 @@ spec:
         volumeMounts:
         - name: grafana-datasources
           mountPath: /etc/grafana/provisioning/datasources
+        - name: grafana-dashboard
+          mountPath: /etc/grafana/provisioning/dashboards
       volumes:
       - name: grafana-datasources
         configMap:
           name: grafana-datasources
+      - name: grafana-dashboard
+        configMap:
+          name: grafana-dashboard
 ---
 apiVersion: v1
 kind: Service
@@ -43,4 +48,3 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
-

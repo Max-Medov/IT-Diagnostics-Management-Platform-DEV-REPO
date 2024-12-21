@@ -131,6 +131,7 @@ pipeline {
                         kubectl apply -f prometheus-rbac.yaml
                         kubectl apply -f prometheus-k8s.yaml
                         kubectl apply -f grafana.yaml
+                        kubectl apply -f grafana-dashboard-configmap.yaml
                         """
                     }
                 }
