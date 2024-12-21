@@ -23,14 +23,15 @@ spec:
           value: admin
         - name: GF_SECURITY_ADMIN_PASSWORD
           value: admin
-        - name: GF_LOG_LEVEL  # ADD THIS
+        - name: GF_LOG_LEVEL
           value: debug
-        readinessProbe:  # ADD THESE
+        readinessProbe:
           httpGet:
             path: /api/health
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 10
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /api/health
@@ -38,15 +39,17 @@ spec:
           initialDelaySeconds: 60
           periodSeconds: 20
         volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
         - name: grafana-datasources
           mountPath: /etc/grafana/provisioning/datasources
         - name: grafana-dashboard
           mountPath: /etc/grafana/provisioning/dashboards
         - name: grafana-dashboard-provider
           mountPath: /etc/grafana/provisioning/dashboards/provider
-        - name: grafana-storage  # ADD THIS
-          mountPath: /var/lib/grafana
       volumes:
+      - name: grafana-storage
+        emptyDir: {}
       - name: grafana-datasources
         configMap:
           name: grafana-datasources
@@ -56,5 +59,18 @@ spec:
       - name: grafana-dashboard-provider
         configMap:
           name: grafana-dashboard-provider
-      - name: grafana-storage  # ADD THIS
-        emptyDir: {}
+      
+---          
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: it-diagnostics
+spec:
+  selector:
+    app: grafana
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
