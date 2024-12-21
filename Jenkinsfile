@@ -40,6 +40,31 @@ pipeline {
                 }
             }
         }
+        
+        // Pre-Push Minimal Sanity Tests for All Services
+        stage('Pre-Push Minimal Sanity Tests') {
+            steps {
+                script {
+                    def services = ['auth_service', 'case_service', 'diagnostic_service', 'frontend']
+                    for (service in services) {
+                        echo "Running sanity test for ${service}"
+                        sh """
+                        docker run -d --name test_${service} ${REGISTRY}/${DOCKER_ORG}/${IMAGE_PREFIX}:${service}
+                        sleep 10
+                        """
+                        def running = sh(script: "docker ps --filter name=test_${service} --filter status=running | grep test_${service} || true", returnStatus: true)
+                        if (running != 0) {
+                            echo "${service} container not running after 10s, sanity test failed"
+                            sh "docker rm -f test_${service}"
+                            error("Pre-push sanity test failed for ${service}")
+                        } else {
+                            echo "${service} container is running, sanity test passed"
+                            sh "docker rm -f test_${service}"
+                        }
+                    }
+                }
+            }
+        }        
 
         // Push Docker images to Docker Hub
         stage('Push Images to Docker Hub') {
