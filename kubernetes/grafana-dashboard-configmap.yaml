@@ -53,10 +53,10 @@ data:
             "steppedLine": false,
             "targets": [
               {
-                "expr": "http_requests_total{job='kubernetes-pods'}",
+                "expr": "sum(http_requests_total{job='kubernetes-pods'})",
                 "format": "time_series",
                 "intervalFactor": 2,
-                "legendFormat": "{{method}} {{status}}",
+                "legendFormat": "HTTP Requests",
                 "refId": "A"
               }
             ],
@@ -64,7 +64,7 @@ data:
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "HTTP Requests",
+            "title": "HTTP Requests Total",
             "tooltip": {
               "shared": true,
               "sort": 0,
