@@ -20,7 +20,7 @@ pipeline {
             }
         }
 
-        // Checkout the repository containing Kubernetes YAML and config files
+        // Checkout the repository containing Kubernetes YAML files
         stage('Checkout Kubernetes Configurations') {
             steps {
                 dir('kubernetes-config') {
@@ -157,6 +157,7 @@ pipeline {
                         exit 1
                     fi
 
+                    # Test auth-service: login and get token
                     TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
                         -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
                         http://localhost:5000/login | jq -r '.access_token')
@@ -167,10 +168,20 @@ pipeline {
                     fi
                     echo "TOKEN=\$TOKEN"
 
+                    # Test case-service: create a case
                     curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
                         -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
                         http://localhost:5001/cases || (echo "Case creation failed" && exit 1)
 
+                    # Test case-service: retrieve cases
+                    CASES=\$(curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5001/cases)
+                    echo "Received cases: \$CASES"
+                    echo "\$CASES" | jq 'map(select(.description == "Integration Test Case"))' | grep "Integration Test Case" || (echo "Created case not found in case list" && exit 1)
+
+                    # Test diagnostic-service: check if script is available
+                    curl -f -H "Authorization: Bearer \$TOKEN" http://localhost:5002/download_script/1 || (echo "Diagnostic service not responding" && exit 1)
+
+                    # Kill port-forwarding processes
                     kill \$AUTH_PF_PID || true
                     kill \$CASE_PF_PID || true
                     kill \$DIAGNOSTIC_PF_PID || true
@@ -192,3 +203,4 @@ pipeline {
         }
     }
 }
+
