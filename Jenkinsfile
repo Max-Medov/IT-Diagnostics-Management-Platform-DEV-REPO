@@ -102,9 +102,9 @@ pipeline {
                           --from-file=prometheus.yml=prometheus.yml \
                           -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
-                        kubectl create configmap grafana-datasources \
-                          --from-file=datasources.yaml=datasources.yaml \
-                          -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+			kubectl create configmap grafana-datasources \
+			  --from-file=datasources.yaml=kubernetes/datasources.yaml \
+			  -n it-diagnostics --dry-run=client -o yaml | kubectl apply -f -
 
                         kubectl create configmap grafana-dashboard \
                           --from-file=auth-service-dashboard.json=kubernetes/auth-service-dashboard.json \
