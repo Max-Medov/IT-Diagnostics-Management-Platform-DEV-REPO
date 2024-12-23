@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard
+  name: grafana-dashboard-configmap       # <-- IMPORTANT: matches file name
   namespace: it-diagnostics
 data:
   it-diagnostics-dashboard.json: |
@@ -24,36 +24,24 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 0
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
         },
         {
           "title": "Auth: Error Rate",
           "type": "timeseries",
           "targets": [
             {
-              // 4xx
               "expr": "rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"4..\"}[1m])",
               "legendFormat": "4xx",
               "refId": "A"
             },
             {
-              // 5xx
               "expr": "rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"5..\"}[1m])",
               "legendFormat": "5xx",
               "refId": "B"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 0
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 }
         },
         {
           "title": "Auth: Request Latency",
@@ -65,12 +53,7 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 0
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 }
         },
 
         // =========================
@@ -86,12 +69,7 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 8
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 }
         },
         {
           "title": "Case: Error Rate",
@@ -108,12 +86,7 @@ data:
               "refId": "B"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 8
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 }
         },
         {
           "title": "Case: Request Latency",
@@ -125,12 +98,7 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 8
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 }
         },
 
         // =========================
@@ -146,12 +114,7 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 16
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 }
         },
         {
           "title": "Diagnostic: Error Rate",
@@ -168,12 +131,7 @@ data:
               "refId": "B"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 16
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 }
         },
         {
           "title": "Diagnostic: Request Latency",
@@ -185,12 +143,7 @@ data:
               "refId": "A"
             }
           ],
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 16
-          }
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 }
         }
       ],
       "schemaVersion": 36,
