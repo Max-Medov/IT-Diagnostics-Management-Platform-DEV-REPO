@@ -141,10 +141,6 @@ pipeline {
                         kubectl apply -f ingress.yaml
                         kubectl apply -f prometheus-rbac.yaml
                         kubectl apply -f prometheus-k8s.yaml
-
-                        # REMOVED the line that references grafana-dashboard-configmap.yaml
-
-                        kubectl apply -f grafana-dashboard-provider.yaml
                         kubectl apply -f grafana.yaml
                         """
                     }
