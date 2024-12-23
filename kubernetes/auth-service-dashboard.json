@@ -8,7 +8,7 @@
   "id": 1,
   "panels": [
     {
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {}
       },
@@ -26,7 +26,7 @@
       ]
     },
     {
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {}
       },

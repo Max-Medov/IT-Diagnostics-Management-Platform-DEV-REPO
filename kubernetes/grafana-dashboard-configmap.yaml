@@ -14,7 +14,7 @@ data:
       "graphTooltip": 0,
       "panels": [
         {
-          "datasource": "${DS_PROMETHEUS}",
+          "datasource": "Prometheus",
           "fieldConfig": {
             "defaults": {}
           },
@@ -32,7 +32,7 @@ data:
           ]
         },
         {
-          "datasource": "${DS_PROMETHEUS}",
+          "datasource": "Prometheus",
           "fieldConfig": {
             "defaults": {}
           },
