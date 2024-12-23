@@ -14,48 +14,43 @@ spec:
         app: grafana
     spec:
       containers:
-      - name: grafana
-        image: grafana/grafana:8.5.5
-        ports:
-        - containerPort: 3000
-        env:
-        - name: GF_SECURITY_ADMIN_USER
-          value: admin
-        - name: GF_SECURITY_ADMIN_PASSWORD
-          value: admin
-        volumeMounts:
-        - name: grafana-storage
-          mountPath: /var/lib/grafana
-        - name: grafana-datasources
-          mountPath: /etc/grafana/provisioning/datasources
-        - name: grafana-dashboard
-          mountPath: /etc/grafana/provisioning/dashboards
-        - name: grafana-dashboard-provider
-          mountPath: /etc/grafana/provisioning/dashboards/provider
+        - name: grafana
+          image: grafana/grafana:10.1.2
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboard
+              mountPath: /var/lib/grafana/dashboards
       volumes:
-      - name: grafana-storage
-        emptyDir: {}
-      - name: grafana-datasources
-        configMap:
-          name: grafana-datasources
-      - name: grafana-dashboard
-        configMap:
-          name: grafana-dashboard
-      - name: grafana-dashboard-provider
-        configMap:
-          name: grafana-dashboard-provider
-      
----          
+        - name: grafana-storage
+          emptyDir: {}
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboard
+          configMap:
+            name: grafana-dashboard
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana
   namespace: it-diagnostics
 spec:
+  type: ClusterIP
   selector:
     app: grafana
-  type: ClusterIP
   ports:
-    - port: 3000
+    - name: web
+      port: 3000
       targetPort: 3000
-      protocol: TCP
+

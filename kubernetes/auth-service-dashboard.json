@@ -1,35 +1,49 @@
 {
-  "dashboard": {
-    "title": "Auth Service Metrics",
-    "uid": "auth-service-metrics",
-    "editable": true,
-    "schemaVersion": 16,
-    "version": 1,
-    "panels": [
-      {
-        "type": "graph",
-        "title": "HTTP Requests",
-        "targets": [
-          {
-            "expr": "http_requests_total{job='kubernetes-pods'}",
-            "legendFormat": "{{method}} {{status}}",
-            "refId": "A"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        }
-      }
-    ],
-    "time": {
-      "from": "now-6h",
-      "to": "now"
-    },
-    "timezone": "browser"
+  "annotations": {
+    "list": []
   },
-  "overwrite": true
+  "editable": true,
+  "graphTooltip": 0,
+  "id": 1,
+  "panels": [
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {}
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 2,
+      "title": "Request Count",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "flask_http_request_total",
+          "intervalFactor": 1,
+          "legendFormat": "{{handler}} {{method}} {{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {}
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Request Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "flask_http_request_duration_seconds_count",
+          "intervalFactor": 1,
+          "legendFormat": "{{handler}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "version": 1
 }
 

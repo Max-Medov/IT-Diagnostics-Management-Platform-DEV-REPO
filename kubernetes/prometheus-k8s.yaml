@@ -13,25 +13,25 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus
       containers:
-      - name: prometheus
-        image: prom/prometheus:v2.35.0
-        args:
-        - "--config.file=/etc/prometheus/prometheus.yml"
-        - "--storage.tsdb.path=/prometheus"
-        ports:
-        - containerPort: 9090
-        volumeMounts:
-        - name: prometheus-config
-          mountPath: /etc/prometheus
-        - name: prometheus-storage
-          mountPath: /prometheus
+        - name: prometheus
+          image: prom/prometheus:v2.48.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--web.enable-lifecycle"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus/
+            - name: data
+              mountPath: /prometheus
       volumes:
-      - name: prometheus-config
-        configMap:
-          name: prometheus-config
-      - name: prometheus-storage
-        emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: prometheus-config
+        - name: data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -39,10 +39,11 @@ metadata:
   name: prometheus
   namespace: it-diagnostics
 spec:
+  type: ClusterIP
   selector:
     app: prometheus
-  type: ClusterIP
   ports:
-    - port: 9090
+    - name: web
+      port: 9090
       targetPort: 9090
 
