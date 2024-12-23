@@ -14,27 +14,28 @@ spec:
         app: grafana
     spec:
       containers:
-      - name: grafana
-        image: grafana/grafana:10.1.2
-        ports:
-          - containerPort: 3000
-        volumeMounts:
-          # Dashboard JSON ConfigMap
-          - name: grafana-dashboard-configmap
-            mountPath: /var/lib/grafana/dashboards
+        - name: grafana
+          image: grafana/grafana:10.1.2
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            # Mount the dashboard JSON ConfigMap
+            - name: grafana-dashboard-configmap
+              mountPath: /var/lib/grafana/dashboards
 
-          # Dashboard provider ConfigMap
-          - name: grafana-dashboard-provider
-            mountPath: /etc/grafana/provisioning/dashboards
+            # Mount the dashboard provider ConfigMap
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
 
-          # Datasources ConfigMap
-          - name: datasources
-            mountPath: /etc/grafana/provisioning/datasources
+            # Mount the datasources ConfigMap
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
 
       volumes:
+        # IMPORTANT: updated ConfigMap name here to match "grafana-dashboard"
         - name: grafana-dashboard-configmap
           configMap:
-            name: grafana-dashboard-configmap
+            name: grafana-dashboard
 
         - name: grafana-dashboard-provider
           configMap:
@@ -43,7 +44,6 @@ spec:
         - name: datasources
           configMap:
             name: datasources
-
 ---
 apiVersion: v1
 kind: Service
