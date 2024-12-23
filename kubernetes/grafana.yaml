@@ -14,27 +14,35 @@ spec:
         app: grafana
     spec:
       containers:
-        - name: grafana
-          image: grafana/grafana:10.1.2
-          ports:
-            - containerPort: 3000
-          volumeMounts:
-            - name: grafana-dashboard
-              mountPath: /var/lib/grafana/dashboards
-            - name: grafana-dashboard-provider
-              mountPath: /etc/grafana/provisioning/dashboards
-            - name: grafana-datasources
-              mountPath: /etc/grafana/provisioning/datasources
+      - name: grafana
+        image: grafana/grafana:10.1.2
+        ports:
+          - containerPort: 3000
+        volumeMounts:
+          # Volume that holds the actual JSON dashboards
+          - name: grafana-dashboard
+            mountPath: /var/lib/grafana/dashboards
+
+          # Volume for the dashboard provider file
+          - name: grafana-dashboard-provider
+            mountPath: /etc/grafana/provisioning/dashboards
+
+          # Volume for the Grafana datasources
+          - name: grafana-datasources
+            mountPath: /etc/grafana/provisioning/datasources
+
       volumes:
-        - name: grafana-dashboard
-          configMap:
-            name: grafana-dashboard
-        - name: grafana-dashboard-provider
-          configMap:
-            name: grafana-dashboard-provider
-        - name: grafana-datasources
-          configMap:
-            name: grafana-datasources
+      - name: grafana-dashboard
+        configMap:
+          name: grafana-dashboard
+
+      - name: grafana-dashboard-provider
+        configMap:
+          name: grafana-dashboard-provider  # <--- references the ConfigMap above
+
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
 ---
 apiVersion: v1
 kind: Service
@@ -42,7 +50,6 @@ metadata:
   name: grafana
   namespace: it-diagnostics
 spec:
-  type: ClusterIP
   selector:
     app: grafana
   ports:

@@ -7,10 +7,11 @@ data:
   dashboard-provider.yaml: |
     apiVersion: 1
     providers:
-    - name: "Default"
-      folder: ""
-      type: file
-      disableDeletion: false
-      options:
-        path: /var/lib/grafana/dashboards
+      - name: "Default"
+        folder: ""
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 5
+        options:
+          path: /var/lib/grafana/dashboards
 
