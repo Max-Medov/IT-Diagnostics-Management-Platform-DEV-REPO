@@ -19,30 +19,31 @@ spec:
         ports:
           - containerPort: 3000
         volumeMounts:
-          # Volume that holds the actual JSON dashboards
+          # Dashboard JSON ConfigMap
           - name: grafana-dashboard
             mountPath: /var/lib/grafana/dashboards
 
-          # Volume for the dashboard provider file
+          # Dashboard provider ConfigMap
           - name: grafana-dashboard-provider
             mountPath: /etc/grafana/provisioning/dashboards
 
-          # Volume for the Grafana datasources
+          # Datasources ConfigMap
           - name: grafana-datasources
             mountPath: /etc/grafana/provisioning/datasources
 
       volumes:
-      - name: grafana-dashboard
-        configMap:
-          name: grafana-dashboard
+        - name: grafana-dashboard-configmap
+          configMap:
+            name: grafana-dashboard-configmap
 
-      - name: grafana-dashboard-provider
-        configMap:
-          name: grafana-dashboard-provider  # <--- references the ConfigMap above
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
 
-      - name: grafana-datasources
-        configMap:
-          name: grafana-datasources
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+
 ---
 apiVersion: v1
 kind: Service
