@@ -6,6 +6,7 @@ metadata:
 data:
   auth-service-dashboard.json: |
     {
+      "title": "Auth Service Dashboard",
       "annotations": {
         "list": []
       },
