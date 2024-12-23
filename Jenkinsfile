@@ -114,7 +114,7 @@ pipeline {
 
                           # Now apply the Grafana config + service
                           kubectl apply -f grafana-dashboard-provider.yaml
-                          kubectl apply -f grafana-dashboard.yaml
+                          kubectl apply -f grafana-dashboard-configmap.yaml
                           kubectl apply -f grafana-datasources.yaml
                           kubectl apply -f grafana.yaml
                         """
