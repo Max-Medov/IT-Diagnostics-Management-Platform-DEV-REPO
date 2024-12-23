@@ -102,7 +102,7 @@ pipeline {
                         sh """
                         # Create Prometheus configmap
                         kubectl create configmap prometheus-config \
-                          --from-file=prometheus.yml=kubernetes/prometheus.yml \
+                          --from-file=prometheus.yml=monitoring/prometheus.yml \
                           -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
                         # Create Grafana datasources configmap
