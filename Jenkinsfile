@@ -107,17 +107,18 @@ pipeline {
 
                         # Create Grafana datasources configmap
                         kubectl create configmap grafana-datasources \
-                          --from-file=datasources.yaml=kubernetes/datasources.yaml \
+                          --from-file=datasources.yaml=monitoring/datasources.yaml \
                           -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
                         # Create Grafana dashboard configmap
+                        # (We assume your "it-diagnostics-dashboard.json" is the multi-service dashboard)
                         kubectl create configmap grafana-dashboard \
-                          --from-file=auth-service-dashboard.json=kubernetes/auth-service-dashboard.json \
+                          --from-file=auth-service-dashboard.json=monitoring/it-diagnostics-dashboard.json \
                           -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
                         # Create Grafana dashboard provider configmap
                         kubectl create configmap grafana-dashboard-provider \
-                          --from-file=dashboard-provider.yaml=kubernetes/grafana-dashboard-provider.yaml \
+                          --from-file=dashboard-provider.yaml=monitoring/grafana-dashboard-provider.yaml \
                           -n ${KUBE_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         """
                     }
@@ -184,8 +185,8 @@ pipeline {
                     sleep 10
 
                     # Test auth-service: check if user exists
-                    REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
-                        -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
+                    REGISTER_RESPONSE=\$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \\
+                        -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \\
                         http://localhost:5000/register)
 
                     if [ "\$REGISTER_RESPONSE" = "409" ]; then
@@ -198,8 +199,8 @@ pipeline {
                     fi
 
                     # Test auth-service: login and get token
-                    TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \
-                        -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \
+                    TOKEN=\$(curl -f -X POST -H 'Content-Type: application/json' \\
+                        -d '{"username": "${TEST_USER}", "password": "${TEST_PASS}"}' \\
                         http://localhost:5000/login | jq -r '.access_token')
 
                     if [ -z "\$TOKEN" ] || [ "\$TOKEN" = "null" ]; then
@@ -209,8 +210,8 @@ pipeline {
                     echo "TOKEN=\$TOKEN"
 
                     # Test case-service: create a case
-                    curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \
-                        -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \
+                    curl -f -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer \$TOKEN" \\
+                        -d '{"description": "Integration Test Case", "platform": "Linux Machine"}' \\
                         http://localhost:5001/cases || (echo "Case creation failed" && exit 1)
 
                     # Test case-service: retrieve cases
