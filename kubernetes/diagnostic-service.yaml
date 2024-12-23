@@ -12,6 +12,10 @@ spec:
     metadata:
       labels:
         app: diagnostic-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "5002"
     spec:
       containers:
       - name: diagnostic-service
