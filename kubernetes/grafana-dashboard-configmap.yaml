@@ -10,7 +10,6 @@ data:
   it-diagnostics-dashboard.json: |
     {
       "title": "IT Diagnostics: All Services Dashboard",
-      "uid": "it-diagnostics-all-services",
       "time": {
         "from": "now-1h",
         "to": "now"
