@@ -1,18 +1,137 @@
 apiVersion: v1
+
 kind: ConfigMap
+
 metadata:
   name: grafana-dashboard-configmap
   namespace: it-diagnostics
+
 data:
   it-diagnostics-dashboard.json: |
     {
       "title": "IT Diagnostics: All Services Dashboard",
-      "editable": true,
-      "graphTooltip": 0,
+      "uid": "it-diagnostics-all-services",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "schemaVersion": 36,
+      "version": 1,
+      "refresh": "5s",
       "panels": [
+        {
+          "type": "row",
+          "title": "Auth Service",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "panels": []
+        },
+        {
+          "title": "Auth: Error Rate (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "sum by (pod) ( rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"4..|5..\"}[5m]) )",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "rps"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Auth: Avg Latency (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"auth-service-.*\"}[5m]) / rate(flask_http_request_duration_seconds_count{pod=~\"auth-service-.*\"}[5m])",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "s"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Auth: Available Replicas",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{deployment=\"auth-service\"}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          }
+        },
         {
           "title": "Auth: Request Count",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 12, "y": 1 },
           "targets": [
             {
               "expr": "flask_http_request_total{pod=~\"auth-service-.*\"}",
@@ -20,124 +139,320 @@ data:
               "legendFormat": "{{method}} {{status}}",
               "refId": "A"
             }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
+          ]
         },
         {
-          "title": "Auth: Error Rate",
+          "title": "Auth: Error Rate Over Time",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 20, "y": 1 },
           "targets": [
             {
-              "expr": "rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"4..\"}[1m])",
-              "legendFormat": "4xx",
+              "expr": "rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"4..|5..\"}[1m])",
+              "legendFormat": "4xx/5xx",
               "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Auth: Request Latency Over Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 5 },
+          "targets": [
+            {
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"auth-service-.*\"}[1m]) / rate(flask_http_request_duration_seconds_count{pod=~\"auth-service-.*\"}[1m])",
+              "legendFormat": "Avg Latency (s)",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Case Service",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "panels": []
+        },
+        {
+          "title": "Case: Error Rate (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 14 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
             },
-            {
-              "expr": "rate(flask_http_request_total{pod=~\"auth-service-.*\", status=~\"5..\"}[1m])",
-              "legendFormat": "5xx",
-              "refId": "B"
-            }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 }
-        },
-        {
-          "title": "Auth: Request Latency",
-          "type": "timeseries",
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
           "targets": [
             {
-              "expr": "flask_http_request_duration_seconds_count{pod=~\"auth-service-.*\"}",
-              "legendFormat": "{{method}} {{status}}",
+              "expr": "sum by (pod) ( rate(flask_http_request_total{pod=~\"case-service-.*\", status=~\"4..|5..\"}[5m]) )",
               "refId": "A"
             }
           ],
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 }
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "rps"
+            },
+            "overrides": []
+          }
         },
-
+        {
+          "title": "Case: Avg Latency (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 14 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"case-service-.*\"}[5m]) / rate(flask_http_request_duration_seconds_count{pod=~\"case-service-.*\"}[5m])",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "s"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Case: Available Replicas",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 14 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{deployment=\"case-service\"}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          }
+        },
         {
           "title": "Case: Request Count",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 12, "y": 14 },
           "targets": [
             {
               "expr": "flask_http_request_total{pod=~\"case-service-.*\"}",
+              "intervalFactor": 1,
               "legendFormat": "{{method}} {{status}}",
               "refId": "A"
             }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 }
+          ]
         },
         {
-          "title": "Case: Error Rate",
+          "title": "Case: Error Rate Over Time",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 20, "y": 14 },
           "targets": [
             {
-              "expr": "rate(flask_http_request_total{pod=~\"case-service-.*\",status=~\"4..\"}[1m])",
-              "legendFormat": "4xx",
+              "expr": "rate(flask_http_request_total{pod=~\"case-service-.*\", status=~\"4..|5..\"}[1m])",
+              "legendFormat": "4xx/5xx",
               "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Case: Request Latency Over Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 18 },
+          "targets": [
+            {
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"case-service-.*\"}[1m]) / rate(flask_http_request_duration_seconds_count{pod=~\"case-service-.*\"}[1m])",
+              "legendFormat": "Avg Latency (s)",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Diagnostic Service",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 26
+          },
+          "panels": []
+        },
+        {
+          "title": "Diagnostic: Error Rate (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 27 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
             },
-            {
-              "expr": "rate(flask_http_request_total{pod=~\"case-service-.*\",status=~\"5..\"}[1m])",
-              "legendFormat": "5xx",
-              "refId": "B"
-            }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 }
-        },
-        {
-          "title": "Case: Request Latency",
-          "type": "timeseries",
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
           "targets": [
             {
-              "expr": "flask_http_request_duration_seconds_count{pod=~\"case-service-.*\"}",
-              "legendFormat": "{{method}} {{status}}",
+              "expr": "sum by (pod) ( rate(flask_http_request_total{pod=~\"diagnostic-service-.*\", status=~\"4..|5..\"}[5m]) )",
               "refId": "A"
             }
           ],
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 }
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "rps"
+            },
+            "overrides": []
+          }
         },
-
+        {
+          "title": "Diagnostic: Avg Latency (Last 5m)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 27 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"diagnostic-service-.*\"}[5m]) / rate(flask_http_request_duration_seconds_count{pod=~\"diagnostic-service-.*\"}[5m])",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              },
+              "mappings": [],
+              "unit": "s"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "title": "Diagnostic: Available Replicas",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 27 },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{deployment=\"diagnostic-service\"}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          }
+        },
         {
           "title": "Diagnostic: Request Count",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 12, "y": 27 },
           "targets": [
             {
               "expr": "flask_http_request_total{pod=~\"diagnostic-service-.*\"}",
+              "intervalFactor": 1,
               "legendFormat": "{{method}} {{status}}",
               "refId": "A"
             }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 }
+          ]
         },
         {
-          "title": "Diagnostic: Error Rate",
+          "title": "Diagnostic: Error Rate Over Time",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 20, "y": 27 },
           "targets": [
             {
-              "expr": "rate(flask_http_request_total{pod=~\"diagnostic-service-.*\",status=~\"4..\"}[1m])",
-              "legendFormat": "4xx",
+              "expr": "rate(flask_http_request_total{pod=~\"diagnostic-service-.*\", status=~\"4..|5..\"}[1m])",
+              "legendFormat": "4xx/5xx",
               "refId": "A"
-            },
-            {
-              "expr": "rate(flask_http_request_total{pod=~\"diagnostic-service-.*\",status=~\"5..\"}[1m])",
-              "legendFormat": "5xx",
-              "refId": "B"
             }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 }
+          ]
         },
         {
-          "title": "Diagnostic: Request Latency",
+          "title": "Diagnostic: Request Latency Over Time",
           "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 31 },
           "targets": [
             {
-              "expr": "flask_http_request_duration_seconds_count{pod=~\"diagnostic-service-.*\"}",
-              "legendFormat": "{{method}} {{status}}",
+              "expr": "rate(flask_http_request_duration_seconds_sum{pod=~\"diagnostic-service-.*\"}[1m]) / rate(flask_http_request_duration_seconds_count{pod=~\"diagnostic-service-.*\"}[1m])",
+              "legendFormat": "Avg Latency (s)",
               "refId": "A"
             }
-          ],
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 }
+          ]
         }
-      ],
-      "schemaVersion": 36,
-      "version": 1
+      ]
     }
 
